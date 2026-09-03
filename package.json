@@ -47,7 +47,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "node --test src/lib/domain.test.mjs",
-    "typecheck": "tsc --noEmit",`r`n    "postinstall": "node ./scripts/patch-cmake.cjs"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "node ./scripts/patch-cmake.cjs"
   },
   "private": true
 }
