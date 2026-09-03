@@ -1,6 +1,6 @@
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -51,7 +51,21 @@ function makeCleanChatCss(
       background: ${theme.backgroundElement} !important;
     }
 
-    /* Sembunyikan input dan banner pengalih perhatian */
+    /* Hilangkan backdrop opacity tipis bawaan YouTube Polymer */
+    tp-yt-iron-overlay-backdrop,
+    iron-overlay-backdrop,
+    #gradient.yt-live-chat-renderer,
+    #item-list::before,
+    #item-list::after,
+    #item-scroller::before,
+    #item-scroller::after {
+      display: none !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      background: none !important;
+    }
+
+    /* Sembunyikan elemen input dan banner yang tidak diperlukan */
     yt-live-chat-header-renderer,
     yt-live-chat-message-input-renderer,
     #input-panel.yt-live-chat-renderer,
@@ -74,7 +88,7 @@ function makeCleanChatCss(
       margin-right: 8px !important;
     }
 
-    /* Non-member: kontras tinggi terhadap tema (terang/gelap) */
+    /* Non-member: kontras tinggi terhadap tema */
     yt-live-chat-text-message-renderer #author-name,
     yt-live-chat-membership-item-renderer #author-name,
     yt-live-chat-paid-message-renderer #author-name,
@@ -170,9 +184,13 @@ function makeCleanChatScript(
     if (!style) {
       style = document.createElement('style');
       style.id = 'stream-pilot-clean-chat';
-      style.textContent = ${JSON.stringify(css)};
       (document.head || document.documentElement).appendChild(style);
     }
+    style.textContent = ${JSON.stringify(css)};
+    document.querySelectorAll('tp-yt-iron-overlay-backdrop, iron-overlay-backdrop').forEach((el) => {
+      el.style.display = 'none';
+      el.remove();
+    });
   };
   ensureStyle();
 
@@ -189,6 +207,7 @@ function makeCleanChatScript(
           if (option) {
             option.click();
             window.__streamPilotLiveChatChosen = true;
+            setTimeout(ensureStyle, 100);
           }
         }, 80);
       } else if (/live chat/i.test(trigger.textContent || '')) {
@@ -214,21 +233,29 @@ export function LiveChat({ streamLink }: { streamLink: string }) {
   const { colors: theme, resolvedTheme, settings } = useApp();
   const uri = toYouTubeChatUrl(streamLink);
   const webviewRef = useRef<WebView>(null);
+  const [loading, setLoading] = useState(true);
   const cleanChatScript = makeCleanChatScript(theme, resolvedTheme, settings.chatFontSize);
 
   useEffect(() => {
     const css = makeCleanChatCss(theme, resolvedTheme, settings.chatFontSize);
     const updateScript = `
       (() => {
-        const style = document.getElementById('stream-pilot-clean-chat');
-        if (style) {
-          style.textContent = ${JSON.stringify(css)};
+        let style = document.getElementById('stream-pilot-clean-chat');
+        if (!style) {
+          style = document.createElement('style');
+          style.id = 'stream-pilot-clean-chat';
+          (document.head || document.documentElement).appendChild(style);
         }
+        style.textContent = ${JSON.stringify(css)};
       })();
       true;
     `;
     webviewRef.current?.injectJavaScript(updateScript);
   }, [theme, resolvedTheme, settings.chatFontSize]);
+
+  useEffect(() => {
+    setLoading(true);
+  }, [uri]);
 
   if (!uri) {
     return (
@@ -243,61 +270,65 @@ export function LiveChat({ streamLink }: { streamLink: string }) {
   }
 
   return (
-    <WebView
-      ref={webviewRef}
-      source={{ uri }}
-      userAgent={DESKTOP_USER_AGENT}
-      style={[styles.webview, { backgroundColor: theme.backgroundElement }]}
-      containerStyle={{ backgroundColor: theme.backgroundElement }}
-      injectedJavaScriptBeforeContentLoaded={cleanChatScript}
-      injectedJavaScript={cleanChatScript}
-      onMessage={() => undefined}
-      javaScriptEnabled
-      domStorageEnabled
-      sharedCookiesEnabled
-      thirdPartyCookiesEnabled
-      cacheEnabled
-      cacheMode="LOAD_DEFAULT"
-      androidLayerType="hardware"
-      startInLoadingState
-      renderLoading={() => (
-        <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundElement }]}>
+    <View style={[styles.container, { backgroundColor: theme.backgroundElement }]}>
+      <WebView
+        ref={webviewRef}
+        source={{ uri }}
+        userAgent={DESKTOP_USER_AGENT}
+        style={[styles.webview, { backgroundColor: theme.backgroundElement }]}
+        containerStyle={{ backgroundColor: theme.backgroundElement }}
+        injectedJavaScriptBeforeContentLoaded={cleanChatScript}
+        injectedJavaScript={cleanChatScript}
+        onMessage={() => undefined}
+        javaScriptEnabled
+        domStorageEnabled
+        sharedCookiesEnabled
+        thirdPartyCookiesEnabled
+        cacheEnabled
+        cacheMode="LOAD_DEFAULT"
+        androidLayerType="hardware"
+        onLoadEnd={() => setLoading(false)}
+        onError={() => setLoading(false)}
+        setSupportMultipleWindows={false}
+        onShouldStartLoadWithRequest={(request) => {
+          const target = request.url.toLowerCase();
+          if (
+            target === uri.toLowerCase() ||
+            target.startsWith('about:') ||
+            target.startsWith('blob:') ||
+            target.startsWith('data:') ||
+            target.includes('youtube.com') ||
+            target.includes('youtu.be') ||
+            target.includes('google.com') ||
+            target.includes('googleapis.com') ||
+            target.includes('gstatic.com') ||
+            target.includes('googlevideo.com')
+          ) {
+            return true;
+          }
+          void Linking.openURL(request.url).catch(() => undefined);
+          return false;
+        }}
+        renderError={() => (
+          <View style={styles.empty}>
+            <ThemedText type="smallBold">Live chat tidak dapat dimuat</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">Periksa koneksi dan tautan siaran.</ThemedText>
+          </View>
+        )}
+      />
+      {loading ? (
+        <View pointerEvents="none" style={[styles.loadingOverlay, { backgroundColor: theme.backgroundElement }]}>
           <ActivityIndicator size="small" color={theme.textSecondary} />
         </View>
-      )}
-      setSupportMultipleWindows={false}
-      onShouldStartLoadWithRequest={(request) => {
-        const target = request.url.toLowerCase();
-        if (
-          target === uri.toLowerCase() ||
-          target.startsWith('about:') ||
-          target.startsWith('blob:') ||
-          target.startsWith('data:') ||
-          target.includes('youtube.com') ||
-          target.includes('youtu.be') ||
-          target.includes('google.com') ||
-          target.includes('googleapis.com') ||
-          target.includes('gstatic.com') ||
-          target.includes('googlevideo.com')
-        ) {
-          return true;
-        }
-        void Linking.openURL(request.url).catch(() => undefined);
-        return false;
-      }}
-      renderError={() => (
-        <View style={styles.empty}>
-          <ThemedText type="smallBold">Live chat tidak dapat dimuat</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">Periksa koneksi dan tautan siaran.</ThemedText>
-        </View>
-      )}
-    />
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
   webview: { flex: 1, backgroundColor: 'transparent' },
-  loadingContainer: {
+  loadingOverlay: {
     position: 'absolute',
     left: 0,
     right: 0,
