@@ -40,4 +40,13 @@ example
 
 # generated native folders
 /ios
-/android
+# /android
+
+
+.claude
+.impeccable
+.vscode
+AGENTS.MD
+CLAUDE.MD
+CONTEXT.MD
+docs
