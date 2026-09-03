@@ -51,7 +51,7 @@ function makeCleanChatCss(
       background: ${theme.backgroundElement} !important;
     }
 
-    /* Sembunyikan elemen input dan banner yang tidak diperlukan untuk konsol monitor */
+    /* Sembunyikan input dan banner pengalih perhatian */
     yt-live-chat-header-renderer,
     yt-live-chat-message-input-renderer,
     #input-panel.yt-live-chat-renderer,
@@ -165,18 +165,23 @@ function makeCleanChatScript(
 
   return `
 (() => {
-  const apply = () => {
+  const ensureStyle = () => {
     let style = document.getElementById('stream-pilot-clean-chat');
     if (!style) {
       style = document.createElement('style');
       style.id = 'stream-pilot-clean-chat';
+      style.textContent = ${JSON.stringify(css)};
       (document.head || document.documentElement).appendChild(style);
     }
-    style.textContent = ${JSON.stringify(css)};
+  };
+  ensureStyle();
 
-    if (!window.__streamPilotLiveChatChosen) {
-      const trigger = document.querySelector('yt-live-chat-header-renderer #trigger');
-      if (trigger && /top chat/i.test(trigger.textContent || '')) {
+  let checkCount = 0;
+  const selectLiveChat = () => {
+    if (window.__streamPilotLiveChatChosen || checkCount++ > 25) return;
+    const trigger = document.querySelector('yt-live-chat-header-renderer #trigger');
+    if (trigger) {
+      if (/top chat/i.test(trigger.textContent || '')) {
         trigger.click();
         setTimeout(() => {
           const option = [...document.querySelectorAll('tp-yt-paper-item, ytd-menu-service-item-renderer')]
@@ -185,15 +190,22 @@ function makeCleanChatScript(
             option.click();
             window.__streamPilotLiveChatChosen = true;
           }
-        }, 120);
+        }, 80);
+      } else if (/live chat/i.test(trigger.textContent || '')) {
+        window.__streamPilotLiveChatChosen = true;
       }
     }
   };
-  apply();
-  if (!window.__streamPilotCleanChatObserver) {
-    window.__streamPilotCleanChatObserver = new MutationObserver(apply);
-    window.__streamPilotCleanChatObserver.observe(document.documentElement, { childList: true, subtree: true });
-  }
+
+  selectLiveChat();
+  const pollTimer = setInterval(() => {
+    ensureStyle();
+    selectLiveChat();
+    if (window.__streamPilotLiveChatChosen || checkCount > 25) {
+      clearInterval(pollTimer);
+    }
+  }, 400);
+
   true;
 })();`;
 }
@@ -233,7 +245,6 @@ export function LiveChat({ streamLink }: { streamLink: string }) {
   return (
     <WebView
       ref={webviewRef}
-      key={uri}
       source={{ uri }}
       userAgent={DESKTOP_USER_AGENT}
       style={[styles.webview, { backgroundColor: theme.backgroundElement }]}
@@ -245,6 +256,9 @@ export function LiveChat({ streamLink }: { streamLink: string }) {
       domStorageEnabled
       sharedCookiesEnabled
       thirdPartyCookiesEnabled
+      cacheEnabled
+      cacheMode="LOAD_DEFAULT"
+      androidLayerType="hardware"
       startInLoadingState
       renderLoading={() => (
         <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundElement }]}>
@@ -284,7 +298,11 @@ export function LiveChat({ streamLink }: { streamLink: string }) {
 const styles = StyleSheet.create({
   webview: { flex: 1, backgroundColor: 'transparent' },
   loadingContainer: {
-    position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
