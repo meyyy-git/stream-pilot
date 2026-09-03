@@ -216,14 +216,23 @@ function makeCleanChatScript(
     }
   };
 
+  try {
+    Object.defineProperty(document, 'hidden', { get: () => false });
+    Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+  } catch (e) {}
+
   selectLiveChat();
-  const pollTimer = setInterval(() => {
+
+  const keepAliveTimer = setInterval(() => {
     ensureStyle();
     selectLiveChat();
-    if (window.__streamPilotLiveChatChosen || checkCount > 25) {
-      clearInterval(pollTimer);
+
+    // Auto-resume jika YouTube men-pause autoscroll
+    const showMore = document.querySelector('yt-live-chat-item-list-renderer #show-more, #show-more');
+    if (showMore && showMore.offsetParent !== null) {
+      showMore.click();
     }
-  }, 400);
+  }, 500);
 
   true;
 })();`;
