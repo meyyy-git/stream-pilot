@@ -1,0 +1,3 @@
+# Adapt the three-section Live Console by window size
+
+The operator needs quick access to chat, OBS, and Trakteer without forcing three cramped sections onto a phone. Windows whose shortest side is below 600 dp therefore show one section at a time behind a Chat, OBS, and Trakteer bottom navigation bar. Inactive sections remain mounted so switching does not reload chat or reconnect controls, and Chat is selected on launch. Windows at least 600 dp on their shortest side always show three columns at 40% Chat, 30% OBS, and 30% Trakteer. Sections are not collapsible and the layout is not user-editable.
