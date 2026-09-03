@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag versi rilis (contoh: v1.0.0)'
+        required: false
+        default: 'v1.0.0'
 
 permissions:
   contents: write
@@ -41,15 +46,21 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease
 
-      - name: Rename APK for release
+      - name: Prepare APK for release
+        id: prep
         run: |
           mkdir -p release-artifacts
-          TAG_NAME="${GITHUB_REF_NAME:-v1.0.0}"
-          cp android/app/build/outputs/apk/release/app-release.apk release-artifacts/stream-pilot-${TAG_NAME}.apk
+          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+          if [ -z "$TAG" ] || [ "$TAG" = "master" ] || [ "$TAG" = "main" ]; then
+            TAG="v1.0.0"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/stream-pilot-${TAG}.apk"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
         with:
+          tag_name: ${{ steps.prep.outputs.tag }}
+          name: Stream Pilot ${{ steps.prep.outputs.tag }}
           files: release-artifacts/*.apk
           generate_release_notes: true
