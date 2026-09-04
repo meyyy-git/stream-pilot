@@ -58,4 +58,4 @@ npm test
 
 ## Releases
 
-Pushing a semantic version tag such as `v1.2.0`, or entering that version when manually running the Android release workflow, builds the APK and publishes a GitHub Release. The workflow applies the version to the app and APK automatically. Release notes are generated from commits since the previous tag and grouped into **Features**, **Fixes**, and **Other Changes**.
+Pushing a semantic version tag such as `v1.2.0`, or entering `1.2.0` (with or without the leading `v`) when manually running the Android release workflow, builds the APK and publishes a GitHub Release. The workflow applies the version to the app and APK automatically. Release notes are generated from commits since the previous tag and grouped into **Features**, **Fixes**, and **Other Changes**.

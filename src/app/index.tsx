@@ -1,7 +1,7 @@
 import * as KeepAwake from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { SymbolView, SymbolViewProps } from 'expo-symbols';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,11 +28,13 @@ export default function LiveConsoleScreen() {
   const { width, height } = useWindowDimensions();
   const tablet = Math.min(width, height) >= 600;
   const theme = useTheme();
-  const { settings, setSettings, update } = useApp();
+  const { settings, setSettings, update, panelStatuses, setPanelStatus } = useApp();
   const [activePanel, setActivePanel] = useState<PanelId>('chat');
-  const [chatStatus, setChatStatus] = useState<PanelStatus>('unconfigured');
-  const [obsStatus, setObsStatus] = useState<PanelStatus>('unconfigured');
-  const [trakteerStatus, setTrakteerStatus] = useState<PanelStatus>('unconfigured');
+  const [chatRefreshToken, setChatRefreshToken] = useState(0);
+
+  const setChatStatus = useCallback((status: PanelStatus) => setPanelStatus('chat', status), [setPanelStatus]);
+  const setObsStatus = useCallback((status: PanelStatus) => setPanelStatus('obs', status), [setPanelStatus]);
+  const setTrakteerStatus = useCallback((status: PanelStatus) => setPanelStatus('trakteer', status), [setPanelStatus]);
 
   useEffect(() => {
     if (settings.keepAwake) void KeepAwake.activateKeepAwakeAsync('live-console');
@@ -73,24 +75,32 @@ export default function LiveConsoleScreen() {
           <View {...panelProps('chat')} style={[styles.panel, tablet ? styles.chatPanel : activePanel !== 'chat' && styles.hiddenPanel]}>
             <ConsoleSection
               title="Live chat · YouTube"
-              status={chatStatus}
-              action={
-                <FontSizeDropdown
-                  value={settings.chatFontSize}
-                  onChange={(chatFontSize) => setSettings((current) => ({ ...current, chatFontSize }))}
-                  compact
-                />
-              }>
-              <LiveChat streamLink={settings.streamLink} onStatusChange={setChatStatus} />
+              status={panelStatuses.chat}
+              action={(
+                <View style={styles.chatActions}>
+                  <FontSizeDropdown
+                    value={settings.chatFontSize}
+                    onChange={(chatFontSize) => setSettings((current) => ({ ...current, chatFontSize }))}
+                    compact
+                  />
+                  <IconButton
+                    accessibilityLabel="Muat ulang live chat"
+                    icon={{ ios: 'arrow.clockwise', android: 'refresh' }}
+                    disabled={!settings.streamLink.trim() || panelStatuses.chat === 'connecting'}
+                    onPress={() => setChatRefreshToken((value) => value + 1)}
+                  />
+                </View>
+              )}>
+              <LiveChat streamLink={settings.streamLink} onStatusChange={setChatStatus} refreshToken={chatRefreshToken} />
             </ConsoleSection>
           </View>
           <View {...panelProps('obs')} style={[styles.panel, tablet ? styles.controlPanel : activePanel !== 'obs' && styles.hiddenPanel]}>
-            <ConsoleSection title="OBS" status={obsStatus}>
+            <ConsoleSection title="OBS" status={panelStatuses.obs}>
               <ObsControls config={settings.obs} onStatusChange={setObsStatus} />
             </ConsoleSection>
           </View>
           <View {...panelProps('trakteer')} style={[styles.panel, tablet ? styles.controlPanel : activePanel !== 'trakteer' && styles.hiddenPanel]}>
-            <ConsoleSection title="Trakteer" status={trakteerStatus}>
+            <ConsoleSection title="Trakteer" status={panelStatuses.trakteer}>
               <TrakteerControls config={settings.trakteer} onStatusChange={setTrakteerStatus} />
             </ConsoleSection>
           </View>
@@ -133,6 +143,7 @@ const styles = StyleSheet.create({
   },
   brand: { flex: 1, minWidth: 0, gap: 1 },
   settingsAction: { position: 'relative' },
+  chatActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   updateBadge: {
     position: 'absolute',
     top: -2,

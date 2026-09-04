@@ -2,7 +2,8 @@ import { useColorScheme } from 'react-native';
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { Colors } from '@/constants/theme';
-import { AppSettings, defaultSettings } from '@/lib/domain';
+import type { PanelStatus } from '@/components/console-section';
+import { AppSettings, PanelId, defaultSettings } from '@/lib/domain';
 import { loadSettings, saveSettings } from '@/lib/storage';
 import { currentVersion, fetchLatestUpdate, UpdateState } from '@/lib/updates';
 
@@ -10,6 +11,8 @@ type AppContextValue = {
   loaded: boolean;
   settings: AppSettings;
   setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
+  panelStatuses: Record<PanelId, PanelStatus>;
+  setPanelStatus: (panel: PanelId, status: PanelStatus) => void;
   update: UpdateState;
   checkForUpdates: () => Promise<void>;
   resolvedTheme: 'light' | 'dark';
@@ -22,6 +25,11 @@ export function AppProvider({ children }: PropsWithChildren) {
   const systemTheme = useColorScheme();
   const [loaded, setLoaded] = useState(false);
   const [settings, setSettings] = useState(defaultSettings);
+  const [panelStatuses, setPanelStatuses] = useState<Record<PanelId, PanelStatus>>({
+    chat: 'unconfigured',
+    obs: 'unconfigured',
+    trakteer: 'unconfigured',
+  });
   const [update, setUpdate] = useState<UpdateState>({ status: 'checking', currentVersion });
 
   const checkForUpdates = useCallback(async () => {
@@ -31,6 +39,10 @@ export function AppProvider({ children }: PropsWithChildren) {
     } catch {
       setUpdate({ status: 'error', currentVersion });
     }
+  }, []);
+
+  const setPanelStatus = useCallback((panel: PanelId, status: PanelStatus) => {
+    setPanelStatuses((current) => current[panel] === status ? current : { ...current, [panel]: status });
   }, []);
 
   useEffect(() => {
@@ -55,11 +67,13 @@ export function AppProvider({ children }: PropsWithChildren) {
     loaded,
     settings,
     setSettings,
+    panelStatuses,
+    setPanelStatus,
     update,
     checkForUpdates,
     resolvedTheme,
     colors: Colors[resolvedTheme],
-  }), [checkForUpdates, loaded, resolvedTheme, settings, update]);
+  }), [checkForUpdates, loaded, panelStatuses, resolvedTheme, setPanelStatus, settings, update]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

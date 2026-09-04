@@ -241,9 +241,11 @@ function makeCleanChatScript(
 export function LiveChat({
   streamLink,
   onStatusChange,
+  refreshToken,
 }: {
   streamLink: string;
   onStatusChange?: (status: PanelStatus) => void;
+  refreshToken?: number;
 }) {
   const { colors: theme, resolvedTheme, settings } = useApp();
   const uri = toYouTubeChatUrl(streamLink);
@@ -283,6 +285,11 @@ export function LiveChat({
   useEffect(() => {
     onStatusChange?.(status);
   }, [onStatusChange, status]);
+
+  useEffect(() => {
+    if (!refreshToken || !uri) return;
+    webviewRef.current?.reload();
+  }, [refreshToken, uri]);
 
   if (!uri) {
     return (

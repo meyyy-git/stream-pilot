@@ -4,6 +4,7 @@ import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import type { PanelStatus } from '@/components/console-section';
 import { ControlButton, Field, IconButton, SettingsBlock, StatusLabel } from '@/components/control-ui';
 import { FontSizeDropdown } from '@/components/font-size-dropdown';
 import { LiveChat } from '@/components/live-chat';
@@ -38,6 +39,24 @@ const testFields: UrlField[] = [
   { key: 'testTikTok', label: 'Uji Mediashare · TikTok' },
   { key: 'testInstagram', label: 'Uji Mediashare · Instagram' },
 ];
+
+function ConnectionDiagnostic({ title, status, trakteer = false }: { title: string; status: PanelStatus; trakteer?: boolean }) {
+  const label = status === 'ready'
+    ? 'Terhubung'
+    : status === 'error'
+      ? 'Terputus'
+      : status === 'connecting'
+        ? trakteer ? 'Sebagian siap' : 'Menghubungkan…'
+        : 'Belum disetel';
+  const tone = status === 'ready' ? 'success' : status === 'error' ? 'danger' : status === 'connecting' ? 'warning' : 'neutral';
+
+  return (
+    <View style={styles.diagnosticRow}>
+      <ThemedText type="smallBold">{title}</ThemedText>
+      <StatusLabel tone={tone}>{label}</StatusLabel>
+    </View>
+  );
+}
 
 function SettingsDisclosure({
   title,
@@ -133,7 +152,7 @@ function TrakteerUrlField({
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const { settings, setSettings, update, checkForUpdates } = useApp();
+  const { settings, setSettings, update, checkForUpdates, panelStatuses } = useApp();
   const [showPreview, setShowPreview] = useState(false);
   const [showObsManual, setShowObsManual] = useState(false);
   const [openTrakteerGroup, setOpenTrakteerGroup] = useState<'alert' | 'gacha' | 'test' | null>('alert');
@@ -196,6 +215,14 @@ export default function SettingsScreen() {
           Semua perubahan tersimpan otomatis. Password OBS dan Action URL tetap aman di perangkat ini.
         </ThemedText>
       </View>
+
+      <SettingsBlock title="Koneksi" description="Status mengikuti Live Console yang sedang aktif.">
+        <View style={styles.diagnosticList}>
+          <ConnectionDiagnostic title="Live chat" status={panelStatuses.chat} />
+          <ConnectionDiagnostic title="OBS" status={panelStatuses.obs} />
+          <ConnectionDiagnostic title="Trakteer" status={panelStatuses.trakteer} trakteer />
+        </View>
+      </SettingsBlock>
 
       <SettingsBlock
         title="Live chat"
@@ -428,6 +455,8 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: 820, alignSelf: 'center', padding: 20, paddingBottom: 80, gap: 34 },
   intro: { gap: 8, paddingTop: 12 },
+  diagnosticList: { gap: 14 },
+  diagnosticRow: { minHeight: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
   fitButton: { flexGrow: 0, flexBasis: 'auto', alignSelf: 'flex-start', minWidth: 150 },
   preview: { height: 360, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderRadius: 14 },
   inlineActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
