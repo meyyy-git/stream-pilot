@@ -142,3 +142,19 @@ export function isTrakteerActionUrl(value: string) {
     return false;
   }
 }
+
+export function normalizeVersion(value: string) {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(value.trim());
+  return match ? match.slice(1).map(Number).join('.') : null;
+}
+
+export function isNewerVersion(candidate: string, current: string) {
+  const next = normalizeVersion(candidate)?.split('.').map(Number);
+  const installed = normalizeVersion(current)?.split('.').map(Number);
+  if (!next || !installed) return false;
+
+  for (let index = 0; index < next.length; index += 1) {
+    if (next[index] !== installed[index]) return next[index] > installed[index];
+  }
+  return false;
+}

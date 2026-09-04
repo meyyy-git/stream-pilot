@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { getChatRoleColors, isTrakteerActionUrl, parseObsQrCode, toYouTubeChatUrl } from './domain.ts';
+import { getChatRoleColors, isNewerVersion, isTrakteerActionUrl, normalizeVersion, parseObsQrCode, toYouTubeChatUrl } from './domain.ts';
 
 test('normalizes supported YouTube links without an API', () => {
   const expected = 'https://www.youtube.com/live_chat?is_popout=1&v=abc12345678';
@@ -53,4 +53,12 @@ test('parses only official OBS WebSocket QR URLs', () => {
   });
   assert.equal(parseObsQrCode('https://obs.local:4455/secret'), null);
   assert.equal(parseObsQrCode('obsws://obs.local:99999/secret'), null);
+});
+
+test('compares strict release versions', () => {
+  assert.equal(normalizeVersion('v1.2.3'), '1.2.3');
+  assert.equal(normalizeVersion('release-1.2.3'), null);
+  assert.equal(isNewerVersion('v1.1.0', '1.0.9'), true);
+  assert.equal(isNewerVersion('v1.0.0', '1.0.0'), false);
+  assert.equal(isNewerVersion('v0.9.9', '1.0.0'), false);
 });

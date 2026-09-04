@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { ControlButton, Field, IconButton, SettingsBlock, StatusLabel } from '@/components/control-ui';
 import { FontSizeDropdown } from '@/components/font-size-dropdown';
@@ -15,6 +15,7 @@ import { triggerTrakteerAction } from '@/lib/trakteer';
 import { useApp } from '@/providers/app-provider';
 
 type UrlField = { key: keyof TrakteerConfig; label: string };
+const TRAKTEER_STREAM_SETTINGS_URL = 'https://trakteer.id/v2/manage/stream-settings';
 
 const alertFields: UrlField[] = [
   { key: 'previous', label: 'Sebelumnya' },
@@ -132,7 +133,7 @@ function TrakteerUrlField({
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const { settings, setSettings } = useApp();
+  const { settings, setSettings, update, checkForUpdates } = useApp();
   const [showPreview, setShowPreview] = useState(false);
   const [showObsManual, setShowObsManual] = useState(false);
   const [openTrakteerGroup, setOpenTrakteerGroup] = useState<'alert' | 'gacha' | 'test' | null>('alert');
@@ -169,6 +170,20 @@ export default function SettingsScreen() {
       },
     ]);
   };
+  const updateMessage = update.status === 'checking'
+    ? 'Memeriksa rilis terbaru…'
+    : update.status === 'available'
+      ? `Versi ${update.latestVersion} tersedia.`
+      : update.status === 'current'
+        ? `Versi ${update.currentVersion} sudah terbaru.`
+        : 'Belum dapat memeriksa pembaruan. Periksa koneksi internet lalu coba lagi.';
+  const updateButtonLabel = update.status === 'checking'
+    ? 'Memeriksa…'
+    : update.status === 'available'
+      ? `${Platform.OS === 'android' ? 'Unduh' : 'Lihat rilis'} versi ${update.latestVersion}`
+      : update.status === 'error'
+        ? 'Coba lagi'
+        : 'Cek lagi';
 
   return (
     <ScrollView
@@ -303,6 +318,18 @@ export default function SettingsScreen() {
       <SettingsBlock
         title="Trakteer"
         description="Salin Action URL dari Stream Overlay Control, lalu tempel sesuai aksinya.">
+        <View style={styles.trakteerGuide}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Buat atau salin Action URL dari pengaturan Stream Overlay Trakteer, termasuk kebutuhan Stream Deck.
+          </ThemedText>
+          <ControlButton
+            label="Buka pengaturan Trakteer"
+            onPress={() => void Linking.openURL(TRAKTEER_STREAM_SETTINGS_URL).catch(() => {
+              Alert.alert('Halaman belum dapat dibuka', 'Coba buka link pengaturan Trakteer dari browser.');
+            })}
+            style={styles.fitButton}
+          />
+        </View>
         <SettingsDisclosure
           title="Alert + Mediashare"
           summary={progress(alertFields)}
@@ -375,9 +402,24 @@ export default function SettingsScreen() {
         </View>
       </SettingsBlock>
 
-      <SettingsBlock title="Tentang" description="Stream Pilot 1.0.0 · distribusi Android melalui GitHub Releases.">
-        <ControlButton label="Cek pembaruan" disabled onPress={() => undefined} style={styles.fitButton} />
-        <ThemedText type="small" themeColor="textSecondary">Pemeriksaan pembaruan belum tersedia.</ThemedText>
+      <SettingsBlock title="Tentang" description={`Stream Pilot ${update.currentVersion} · rilis Android melalui GitHub.`}>
+        <StatusLabel
+          live
+          tone={update.status === 'current' ? 'success' : update.status === 'error' ? 'danger' : 'warning'}>
+          {updateMessage}
+        </StatusLabel>
+        <ControlButton
+          label={updateButtonLabel}
+          disabled={update.status === 'checking'}
+          onPress={() => {
+            if (update.status !== 'available') return void checkForUpdates();
+            const url = Platform.OS === 'android' && update.downloadUrl ? update.downloadUrl : update.releaseUrl;
+            void Linking.openURL(url).catch(() => {
+              Alert.alert('Link belum dapat dibuka', 'Buka halaman GitHub Releases dan coba unduh kembali.');
+            });
+          }}
+          style={styles.fitButton}
+        />
       </SettingsBlock>
     </ScrollView>
   );
@@ -391,6 +433,7 @@ const styles = StyleSheet.create({
   inlineActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   setupLead: { gap: 12 },
   setupCopy: { gap: 4, maxWidth: 620 },
+  trakteerGuide: { gap: 10 },
   disclosure: { borderTopWidth: StyleSheet.hairlineWidth },
   disclosureHeader: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 10 },
   disclosureCopy: { flex: 1, minWidth: 0, gap: 2 },

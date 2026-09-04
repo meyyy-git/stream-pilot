@@ -40,6 +40,7 @@ The product combines three otherwise separate control surfaces in one adaptive L
 - Compact windows use a Chat, OBS, and Trakteer bottom navigation bar while keeping inactive content mounted. Windows at least 600 dp on their shortest side show all three sections at 40/30/30.
 - The app follows device rotation, keeps the screen awake by default while the Live Console is active, and uses light haptics without sound.
 - Settings provide System, Light, and Dark themes. Interface language is Bahasa Indonesia.
+- The app checks the latest public GitHub Release once at startup and links to a newer Android APK when available.
 - Android ships publicly through GitHub Releases. iOS remains buildable and is published later through the App Store.
 - Configuration can be incomplete; each Console Section remains independently usable.
 

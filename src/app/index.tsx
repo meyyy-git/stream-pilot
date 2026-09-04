@@ -28,7 +28,7 @@ export default function LiveConsoleScreen() {
   const { width, height } = useWindowDimensions();
   const tablet = Math.min(width, height) >= 600;
   const theme = useTheme();
-  const { settings, setSettings } = useApp();
+  const { settings, setSettings, update } = useApp();
   const [activePanel, setActivePanel] = useState<PanelId>('chat');
   const [chatStatus, setChatStatus] = useState<PanelStatus>('unconfigured');
   const [obsStatus, setObsStatus] = useState<PanelStatus>('unconfigured');
@@ -52,13 +52,21 @@ export default function LiveConsoleScreen() {
         <View style={[styles.appBar, { borderBottomColor: theme.border }]}>
           <View style={styles.brand}>
             <ThemedText type="smallBold">Stream Pilot</ThemedText>
-            <StatusLabel>Kontrol siaran lokal</StatusLabel>
+            <StatusLabel>Kontrol Live Streaming</StatusLabel>
           </View>
-          <IconButton
-            accessibilityLabel="Buka Pengaturan"
-            icon={{ ios: 'gearshape', android: 'settings' }}
-            onPress={() => router.push('/settings')}
-          />
+          <View style={styles.settingsAction}>
+            <IconButton
+              accessibilityLabel={update.status === 'available' ? 'Buka Pengaturan, pembaruan tersedia' : 'Buka Pengaturan'}
+              icon={{ ios: 'gearshape', android: 'settings' }}
+              onPress={() => router.push('/settings')}
+            />
+            {update.status === 'available' ? (
+              <View
+                pointerEvents="none"
+                style={[styles.updateBadge, { backgroundColor: theme.warning, borderColor: theme.background }]}
+              />
+            ) : null}
+          </View>
         </View>
 
         <View style={[styles.console, tablet && styles.tabletConsole]}>
@@ -124,6 +132,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   brand: { flex: 1, minWidth: 0, gap: 1 },
+  settingsAction: { position: 'relative' },
+  updateBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+  },
   console: { flex: 1, minHeight: 0, minWidth: 0, gap: 10, padding: 10 },
   tabletConsole: { flexDirection: 'row' },
   panel: { flex: 1, minHeight: 0, minWidth: 0 },

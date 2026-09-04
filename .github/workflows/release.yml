@@ -8,8 +8,7 @@ on:
     inputs:
       tag_name:
         description: 'Tag versi rilis (contoh: v1.0.0)'
-        required: false
-        default: 'v1.0.0'
+        required: true
 
 permissions:
   contents: write
@@ -32,6 +31,37 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Set release version
+        id: version
+        env:
+          REQUESTED_TAG: ${{ github.event.inputs.tag_name || github.ref_name }}
+        run: |
+          TAG="$REQUESTED_TAG"
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Version must use the vMAJOR.MINOR.PATCH format, for example v1.2.0." >&2
+            exit 1
+          fi
+
+          MAJOR="${BASH_REMATCH[1]}"
+          MINOR="${BASH_REMATCH[2]}"
+          PATCH="${BASH_REMATCH[3]}"
+          if (( 10#$MAJOR > 2100 || 10#$MINOR > 999 || 10#$PATCH > 999 )); then
+            echo "Version components are too large." >&2
+            exit 1
+          fi
+
+          VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          VERSION_CODE=$((10#$MAJOR * 1000000 + 10#$MINOR * 1000 + 10#$PATCH))
+          if (( VERSION_CODE < 1 )); then
+            echo "Version must be greater than v0.0.0." >&2
+            exit 1
+          fi
+
+          VERSION="$VERSION" node -e "const fs=require('fs');const p='app.json';const app=JSON.parse(fs.readFileSync(p,'utf8'));app.expo.version=process.env.VERSION;fs.writeFileSync(p,JSON.stringify(app,null,2)+'\n')"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
       - name: Setup Java JDK 17
         uses: actions/setup-java@v4
         with:
@@ -46,18 +76,14 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: android
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -PreleaseVersionName="${{ steps.version.outputs.version }}" -PreleaseVersionCode="${{ steps.version.outputs.version_code }}"
 
       - name: Prepare APK for release
         id: prep
         env:
-          REQUESTED_TAG: ${{ github.event.inputs.tag_name || github.ref_name }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           mkdir -p release-artifacts
-          TAG="$REQUESTED_TAG"
-          if [ -z "$TAG" ] || [ "$TAG" = "master" ] || [ "$TAG" = "main" ]; then
-            TAG="v1.0.0"
-          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/stream-pilot-${TAG}.apk"
 

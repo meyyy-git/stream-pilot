@@ -10,6 +10,7 @@ Stream Pilot is a mobile control deck for livestream operators. It keeps YouTube
 - Trakteer controls for Alert + Mediashare, Gacha, and overlay tests through private Action URLs.
 - Adaptive layouts: bottom navigation on phones and a three-panel console on tablets.
 - Light, dark, and system themes with configurable live chat text size.
+- Automatic update checks against the latest published GitHub Release.
 - Local-only settings with OBS passwords and Trakteer Action URLs stored securely on the device.
 
 ## Requirements
@@ -28,7 +29,7 @@ Download the latest APK from [GitHub Releases](../../releases), install it, then
 1. Open **Settings** in Stream Pilot.
 2. Add a YouTube video, livestream, or popout chat link.
 3. In OBS, open **Tools → WebSocket Server Settings → Show Connect Info**, then scan the QR code from Stream Pilot.
-4. Copy the required Action URLs from Trakteer Stream Overlay Control into their matching fields.
+4. Create or copy the required Action URLs from [Trakteer Stream Overlay settings](https://trakteer.id/v2/manage/stream-settings), then paste them into their matching fields. This is also where Stream Deck API URLs are configured.
 5. Test the OBS connection and any Trakteer test actions before going live.
 
 ## Current limitations
@@ -57,4 +58,4 @@ npm test
 
 ## Releases
 
-Pushing a `v*` tag or manually running the Android release workflow builds the APK and publishes a GitHub Release. Release notes are generated from commits since the previous tag and grouped into **Features**, **Fixes**, and **Other Changes**.
+Pushing a semantic version tag such as `v1.2.0`, or entering that version when manually running the Android release workflow, builds the APK and publishes a GitHub Release. The workflow applies the version to the app and APK automatically. Release notes are generated from commits since the previous tag and grouped into **Features**, **Fixes**, and **Other Changes**.
