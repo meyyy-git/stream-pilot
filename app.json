@@ -4,11 +4,11 @@
     "slug": "stream-pilot",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/stream-pilot-logo-neon.png",
+    "icon": "./assets/images/logo-rounded.png",
     "scheme": "streampilot",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/stream-pilot-logo-neon.png",
+      "icon": "./assets/images/logo-rounded.png",
       "supportsTablet": true,
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Stream Pilot menggunakan jaringan lokal untuk terhubung ke OBS.",
@@ -19,9 +19,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#111315",
-        "foregroundImage": "./assets/images/stream-pilot-logo-neon.png",
-        "monochromeImage": "./assets/images/stream-pilot-logo-neon.png"
+        "backgroundColor": "#0878BE",
+        "foregroundImage": "./assets/images/logo-rounded.png",
+        "monochromeImage": "./assets/images/logo-rounded.png"
       },
       "predictiveBackGestureEnabled": true
     },
@@ -42,8 +42,8 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#111315",
-          "image": "./assets/images/stream-pilot-logo-neon.png",
+          "backgroundColor": "#0878BE",
+          "image": "./assets/images/logo-rounded.png",
           "imageWidth": 160
         }
       ],
