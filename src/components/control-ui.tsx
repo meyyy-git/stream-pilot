@@ -51,6 +51,39 @@ export function StatusLabel({ tone = 'neutral', live = false, children }: PropsW
   );
 }
 
+export function PanelEmptyState({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  tone = 'textSecondary',
+}: {
+  icon: IconName;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  tone?: 'textSecondary' | 'danger';
+}) {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.emptyState}>
+      <SymbolView name={icon} size={38} tintColor={theme[tone]} />
+      <View style={styles.emptyCopy}>
+        <ThemedText type="smallBold" style={styles.emptyTitle}>{title}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={styles.emptyDescription}>
+          {description}
+        </ThemedText>
+      </View>
+      {actionLabel && onAction ? (
+        <ControlButton label={actionLabel} onPress={onAction} style={styles.emptyAction} />
+      ) : null}
+    </View>
+  );
+}
+
 export function ControlButton({
   label,
   onPress,
@@ -154,6 +187,18 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.42 },
   statusRow: { minHeight: 24, flexDirection: 'row', alignItems: 'center', gap: 7 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    paddingHorizontal: 28,
+    paddingVertical: 32,
+  },
+  emptyCopy: { alignItems: 'center', gap: 5, maxWidth: 340 },
+  emptyTitle: { fontSize: 17, lineHeight: 23, textAlign: 'center' },
+  emptyDescription: { textAlign: 'center' },
+  emptyAction: { flexGrow: 0, flexBasis: 'auto', minWidth: 180 },
   controlButton: {
     minHeight: 52,
     minWidth: 72,

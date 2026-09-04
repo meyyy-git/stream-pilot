@@ -1,7 +1,8 @@
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { PropsWithChildren, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { ControlButton, Field, IconButton, SettingsBlock, StatusLabel } from '@/components/control-ui';
 import { FontSizeDropdown } from '@/components/font-size-dropdown';
@@ -16,26 +17,70 @@ import { useApp } from '@/providers/app-provider';
 type UrlField = { key: keyof TrakteerConfig; label: string };
 
 const alertFields: UrlField[] = [
-  { key: 'previous', label: 'Previous' },
-  { key: 'play', label: 'Play' },
-  { key: 'pause', label: 'Pause' },
-  { key: 'next', label: 'Next' },
-  { key: 'censorText', label: 'Censor Text' },
-  { key: 'censorMedia', label: 'Censor Media' },
+  { key: 'previous', label: 'Sebelumnya' },
+  { key: 'play', label: 'Putar' },
+  { key: 'pause', label: 'Jeda' },
+  { key: 'next', label: 'Berikutnya' },
+  { key: 'censorText', label: 'Sensor teks' },
+  { key: 'censorMedia', label: 'Sensor media' },
 ];
 
 const gachaFields: UrlField[] = [
   { key: 'gachaSpin', label: 'Putar' },
-  { key: 'gachaHide', label: 'Hide' },
-  { key: 'gachaShow', label: 'Show' },
+  { key: 'gachaHide', label: 'Sembunyikan' },
+  { key: 'gachaShow', label: 'Tampilkan' },
 ];
 
 const testFields: UrlField[] = [
-  { key: 'testNotification', label: 'Test Notification' },
-  { key: 'testYouTube', label: 'Test Mediashare · YouTube' },
-  { key: 'testTikTok', label: 'Test Mediashare · TikTok' },
-  { key: 'testInstagram', label: 'Test Mediashare · Instagram' },
+  { key: 'testNotification', label: 'Uji notifikasi' },
+  { key: 'testYouTube', label: 'Uji Mediashare · YouTube' },
+  { key: 'testTikTok', label: 'Uji Mediashare · TikTok' },
+  { key: 'testInstagram', label: 'Uji Mediashare · Instagram' },
 ];
+
+function SettingsDisclosure({
+  title,
+  summary,
+  description,
+  open,
+  onToggle,
+  children,
+}: PropsWithChildren & {
+  title: string;
+  summary: string;
+  description?: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <View style={[styles.disclosure, { borderColor: theme.border }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${title}, ${summary}`}
+        onPress={onToggle}
+        style={({ pressed }) => [styles.disclosureHeader, pressed && styles.pressed]}>
+        <View style={styles.disclosureCopy}>
+          <ThemedText type="smallBold">{title}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">{summary}</ThemedText>
+        </View>
+        <SymbolView
+          name={{ ios: open ? 'chevron.up' : 'chevron.down', android: open ? 'expand_less' : 'expand_more' }}
+          size={18}
+          tintColor={theme.textSecondary}
+        />
+      </Pressable>
+      {open ? (
+        <View style={styles.disclosureContent}>
+          {description ? <ThemedText type="small" themeColor="textSecondary">{description}</ThemedText> : null}
+          {children}
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 function TrakteerUrlField({
   label,
@@ -62,7 +107,7 @@ function TrakteerUrlField({
       keyboardType="url"
       secureTextEntry={!visible}
       placeholder="https://ws.trakteer.id/…"
-      error={value && !valid ? 'Gunakan URL HTTPS resmi Trakteer.' : undefined}
+      error={value && !valid ? 'Link belum valid. Gunakan Action URL HTTPS dari Trakteer.' : undefined}
       onChangeText={onChangeText}
       action={(
         <View style={styles.urlActions}>
@@ -73,7 +118,7 @@ function TrakteerUrlField({
           />
           {onTest ? (
             <IconButton
-              accessibilityLabel={`Jalankan ${label}`}
+              accessibilityLabel={`Jalankan ${label.toLowerCase()}`}
               icon={{ ios: 'testtube.2', android: 'science' }}
               disabled={testDisabled || !valid}
               onPress={onTest}
@@ -89,6 +134,8 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const { settings, setSettings } = useApp();
   const [showPreview, setShowPreview] = useState(false);
+  const [showObsManual, setShowObsManual] = useState(false);
+  const [openTrakteerGroup, setOpenTrakteerGroup] = useState<'alert' | 'gacha' | 'test' | null>('alert');
   const [obsTest, setObsTest] = useState<{ label: string; state: 'pending' | 'success' | 'error' } | null>(null);
   const [trakteerTest, setTrakteerTest] = useState<string | null>(null);
 
@@ -98,6 +145,8 @@ export default function SettingsScreen() {
       trakteer: { ...current.trakteer, [key]: value },
     }));
   };
+  const progress = (fields: UrlField[]) =>
+    `${fields.filter((field) => isTrakteerActionUrl(settings.trakteer[field.key])).length} dari ${fields.length} aksi siap`;
 
   const testTrakteer = (label: string, url: string) => {
     Alert.alert('Jalankan pengujian?', `${label} akan benar-benar dikirim ke overlay Trakteer.`, [
@@ -109,11 +158,11 @@ export default function SettingsScreen() {
           void triggerTrakteerAction(url)
             .then(() => {
               void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert('Berhasil', `${label} telah dikirim.`);
+              Alert.alert('Pengujian berhasil', `${label} sudah dikirim ke overlay.`);
             })
-            .catch((reason) => {
+            .catch(() => {
               void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Gagal', reason instanceof Error ? reason.message : 'Pengujian gagal.');
+              Alert.alert('Pengujian belum berhasil', 'Periksa koneksi dan Action URL, lalu coba lagi.');
             })
             .finally(() => setTrakteerTest(null));
         },
@@ -129,15 +178,15 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}>
       <View style={styles.intro}>
         <ThemedText themeColor="textSecondary">
-          Perubahan disimpan otomatis. Password OBS dan URL Aksi tetap berada di penyimpanan aman perangkat.
+          Semua perubahan tersimpan otomatis. Password OBS dan Action URL tetap aman di perangkat ini.
         </ThemedText>
       </View>
 
       <SettingsBlock
-        title="LiveChat"
-        description="Terima link video/live YouTube atau link popout langsung. Tidak memakai YouTube API.">
+        title="Live chat"
+        description="Tambahkan link video atau siaran langsung YouTube. Tidak perlu API key.">
         <Field
-          label="Tautan siaran"
+          label="Link YouTube"
           value={settings.streamLink}
           autoCapitalize="none"
           autoCorrect={false}
@@ -146,14 +195,14 @@ export default function SettingsScreen() {
           onChangeText={(streamLink) => setSettings((current) => ({ ...current, streamLink }))}
         />
         <View style={styles.preferenceGroup}>
-          <ThemedText type="smallBold">Ukuran teks chat</ThemedText>
+          <ThemedText type="smallBold">Ukuran teks live chat</ThemedText>
           <FontSizeDropdown
             value={settings.chatFontSize}
             onChange={(chatFontSize) => setSettings((current) => ({ ...current, chatFontSize }))}
           />
         </View>
         <ControlButton
-          label={showPreview ? 'Tutup Pratinjau' : 'Pratinjau Chat'}
+          label={showPreview ? 'Tutup preview' : 'Preview live chat'}
           onPress={() => setShowPreview((value) => !value)}
           style={styles.fitButton}
         />
@@ -166,62 +215,78 @@ export default function SettingsScreen() {
 
       <SettingsBlock
         title="OBS"
-        description="OBS Studio 28+ dan obs-websocket harus aktif pada jaringan lokal yang sama.">
-        <Field
-          label="Host atau IP"
-          value={settings.obs.host}
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="192.168.1.10"
-          onChangeText={(host) => setSettings((current) => ({ ...current, obs: { ...current.obs, host } }))}
-        />
-        <Field
-          label="Port"
-          value={settings.obs.port}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="numeric"
-          placeholder="4455"
-          onChangeText={(port) => setSettings((current) => ({ ...current, obs: { ...current.obs, port } }))}
-        />
-        <Field
-          label="Password"
-          value={settings.obs.password}
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry
-          placeholder="Password server OBS"
-          onChangeText={(password) => setSettings((current) => ({ ...current, obs: { ...current.obs, password } }))}
-        />
-        <View style={styles.switchRow}>
-          <View style={styles.switchCopy}>
-            <ThemedText type="smallBold">Gunakan koneksi aman (WSS)</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">Aktifkan hanya bila sertifikat TLS/SSL telah diatur pada OBS.</ThemedText>
+        description="Hubungkan perangkat ini dan komputer OBS ke jaringan lokal yang sama.">
+        <View style={styles.setupLead}>
+          <View style={styles.setupCopy}>
+            <ThemedText type="smallBold">Cara tercepat</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Buka Tools → WebSocket Server Settings → Show Connect Info di OBS, lalu pindai QR-nya.
+            </ThemedText>
           </View>
-          <Switch
-            value={settings.obs.secure}
-            onValueChange={(secure) => setSettings((current) => ({ ...current, obs: { ...current.obs, secure } }))}
-          />
-        </View>
-        <View style={styles.inlineActions}>
           <ControlButton
-            label="Pindai QR"
+            label="Pindai QR dari OBS"
             icon={{ ios: 'qrcode.viewfinder', android: 'qr_code_scanner' }}
             onPress={() => router.push('/obs-qr-scanner')}
             style={styles.fitButton}
           />
+        </View>
+
+        <SettingsDisclosure
+          title="Isi manual"
+          summary={settings.obs.host ? `${settings.obs.host}:${settings.obs.port || '4455'}` : 'Alternatif jika QR tidak tersedia'}
+          open={showObsManual}
+          onToggle={() => setShowObsManual((value) => !value)}>
+          <Field
+            label="Host atau IP"
+            value={settings.obs.host}
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="192.168.1.10"
+            onChangeText={(host) => setSettings((current) => ({ ...current, obs: { ...current.obs, host } }))}
+          />
+          <Field
+            label="Port"
+            value={settings.obs.port}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="numeric"
+            placeholder="4455"
+            onChangeText={(port) => setSettings((current) => ({ ...current, obs: { ...current.obs, port } }))}
+          />
+          <Field
+            label="Password OBS"
+            value={settings.obs.password}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            placeholder="Password WebSocket OBS"
+            onChangeText={(password) => setSettings((current) => ({ ...current, obs: { ...current.obs, password } }))}
+          />
+          <View style={styles.switchRow}>
+            <View style={styles.switchCopy}>
+              <ThemedText type="smallBold">Koneksi aman (WSS)</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">Aktifkan hanya jika OBS sudah memakai sertifikat TLS/SSL.</ThemedText>
+            </View>
+            <Switch
+              value={settings.obs.secure}
+              onValueChange={(secure) => setSettings((current) => ({ ...current, obs: { ...current.obs, secure } }))}
+            />
+          </View>
+        </SettingsDisclosure>
+
+        <View style={styles.inlineActions}>
           <ControlButton
-            label={obsTest?.state === 'pending' ? 'Menguji…' : 'Uji Koneksi'}
-            disabled={obsTest?.state === 'pending'}
+            label={obsTest?.state === 'pending' ? 'Menguji…' : 'Uji koneksi'}
+            disabled={obsTest?.state === 'pending' || !settings.obs.host.trim()}
             onPress={() => {
-              setObsTest({ label: 'Menghubungkan…', state: 'pending' });
+              setObsTest({ label: 'Menghubungkan ke OBS…', state: 'pending' });
               void testObsConnection(settings.obs)
                 .then((version) => {
                   setObsTest({ label: `Terhubung ke OBS WebSocket ${version}`, state: 'success' });
                   return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 })
-                .catch((reason) => {
-                  setObsTest({ label: reason instanceof Error ? reason.message : 'Koneksi gagal.', state: 'error' });
+                .catch(() => {
+                  setObsTest({ label: 'Belum dapat terhubung. Periksa jaringan dan detail koneksi.', state: 'error' });
                   return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 });
             }}
@@ -237,9 +302,13 @@ export default function SettingsScreen() {
 
       <SettingsBlock
         title="Trakteer"
-        description="Tempel URL API dari Stream Overlay Control. Nama dan susunan aksi sudah ditetapkan.">
-        <View style={styles.urlGroup}>
-          <ThemedText type="smallBold">ALERT + MEDIASHARE</ThemedText>
+        description="Salin Action URL dari Stream Overlay Control, lalu tempel sesuai aksinya.">
+        <SettingsDisclosure
+          title="Alert + Mediashare"
+          summary={progress(alertFields)}
+          description="Kontrol antrean alert, playback Mediashare, serta sensor teks dan media."
+          open={openTrakteerGroup === 'alert'}
+          onToggle={() => setOpenTrakteerGroup((current) => current === 'alert' ? null : 'alert')}>
           {alertFields.map((field) => (
             <TrakteerUrlField
               key={field.key}
@@ -248,10 +317,14 @@ export default function SettingsScreen() {
               onChangeText={(value) => updateTrakteer(field.key, value)}
             />
           ))}
-        </View>
+        </SettingsDisclosure>
 
-        <View style={[styles.urlGroup, styles.dividedGroup, { borderTopColor: theme.border }]}>
-          <ThemedText type="smallBold">GACHA</ThemedText>
+        <SettingsDisclosure
+          title="Gacha"
+          summary={progress(gachaFields)}
+          description="Kontrol untuk memutar, menyembunyikan, dan menampilkan widget Gacha."
+          open={openTrakteerGroup === 'gacha'}
+          onToggle={() => setOpenTrakteerGroup((current) => current === 'gacha' ? null : 'gacha')}>
           {gachaFields.map((field) => (
             <TrakteerUrlField
               key={field.key}
@@ -260,16 +333,15 @@ export default function SettingsScreen() {
               onChangeText={(value) => updateTrakteer(field.key, value)}
             />
           ))}
-        </View>
+        </SettingsDisclosure>
 
-        <View style={[styles.urlGroup, styles.dividedGroup, { borderTopColor: theme.border }]}>
-          <View style={styles.testHeading}>
-            <View style={styles.testCopy}>
-              <ThemedText type="smallBold">PENGUJIAN</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">Ikon tabung reaksi menjalankan test pada overlay.</ThemedText>
-            </View>
-            {trakteerTest ? <StatusLabel live tone="warning">Mengirim {trakteerTest}…</StatusLabel> : null}
-          </View>
+        <SettingsDisclosure
+          title="Uji overlay"
+          summary={progress(testFields)}
+          description="Gunakan tombol tabung reaksi untuk mengirim pengujian langsung ke overlay."
+          open={openTrakteerGroup === 'test'}
+          onToggle={() => setOpenTrakteerGroup((current) => current === 'test' ? null : 'test')}>
+          {trakteerTest ? <StatusLabel live tone="warning">Menjalankan {trakteerTest.toLowerCase()}…</StatusLabel> : null}
           {testFields.map((field) => (
             <TrakteerUrlField
               key={field.key}
@@ -280,10 +352,10 @@ export default function SettingsScreen() {
               onTest={() => testTrakteer(field.label, settings.trakteer[field.key])}
             />
           ))}
-        </View>
+        </SettingsDisclosure>
       </SettingsBlock>
 
-      <SettingsBlock title="Tampilan" description="Gunakan tema sistem atau pilih tampilan tetap.">
+      <SettingsBlock title="Tampilan" description="Ikuti tema perangkat atau pilih tampilan yang selalu digunakan.">
         <View style={styles.preferenceRow}>
           {(['system', 'light', 'dark'] as ThemePreference[]).map((preference) => (
             <ControlButton
@@ -297,15 +369,15 @@ export default function SettingsScreen() {
         <View style={styles.switchRow}>
           <View style={styles.switchCopy}>
             <ThemedText type="smallBold">Jaga layar tetap menyala</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">Aktif hanya ketika Konsol Siaran berada di latar depan.</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">Aktif saat konsol siaran sedang dibuka.</ThemedText>
           </View>
           <Switch value={settings.keepAwake} onValueChange={(keepAwake) => setSettings((current) => ({ ...current, keepAwake }))} />
         </View>
       </SettingsBlock>
 
       <SettingsBlock title="Tentang" description="Stream Pilot 1.0.0 · distribusi Android melalui GitHub Releases.">
-        <ControlButton label="Cek Pembaruan" disabled onPress={() => undefined} style={styles.fitButton} />
-        <ThemedText type="small" themeColor="textSecondary">Tautan GitHub Release belum dikonfigurasi pada repository ini.</ThemedText>
+        <ControlButton label="Cek pembaruan" disabled onPress={() => undefined} style={styles.fitButton} />
+        <ThemedText type="small" themeColor="textSecondary">Pemeriksaan pembaruan belum tersedia.</ThemedText>
       </SettingsBlock>
     </ScrollView>
   );
@@ -317,11 +389,14 @@ const styles = StyleSheet.create({
   fitButton: { flexGrow: 0, flexBasis: 'auto', alignSelf: 'flex-start', minWidth: 150 },
   preview: { height: 360, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderRadius: 14 },
   inlineActions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
-  urlGroup: { gap: 14 },
-  dividedGroup: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 18 },
+  setupLead: { gap: 12 },
+  setupCopy: { gap: 4, maxWidth: 620 },
+  disclosure: { borderTopWidth: StyleSheet.hairlineWidth },
+  disclosureHeader: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 10 },
+  disclosureCopy: { flex: 1, minWidth: 0, gap: 2 },
+  disclosureContent: { gap: 14, paddingBottom: 18 },
+  pressed: { opacity: 0.68 },
   urlActions: { flexDirection: 'row', gap: 8 },
-  testHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
-  testCopy: { flex: 1, minWidth: 220, gap: 3 },
   preferenceGroup: { gap: 8 },
   preferenceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 56 },

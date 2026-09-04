@@ -23,7 +23,7 @@ export default function ObsQrScannerScreen() {
 
     const obs = parseObsQrCode(data);
     if (!obs) {
-      setError('QR tidak dikenali. Gunakan QR Connect Info dari OBS WebSocket 5.');
+      setError('QR belum dikenali. Gunakan QR dari Show Connect Info di OBS.');
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
@@ -44,12 +44,12 @@ export default function ObsQrScannerScreen() {
   if (!permission.granted) {
     return (
       <View style={[styles.permission, { backgroundColor: theme.background }]}>
-        <ThemedText type="subtitle" style={styles.center}>Akses kamera diperlukan</ThemedText>
+        <ThemedText type="subtitle" style={styles.center}>Izinkan akses kamera</ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.center}>
           Kamera hanya digunakan untuk membaca QR koneksi OBS. Isi QR diproses dan disimpan di perangkat ini.
         </ThemedText>
         <ControlButton
-          label={permission.canAskAgain ? 'Izinkan Kamera' : 'Buka Pengaturan Perangkat'}
+          label={permission.canAskAgain ? 'Izinkan kamera' : 'Buka pengaturan perangkat'}
           onPress={() => void (permission.canAskAgain ? requestPermission() : Linking.openSettings())}
           style={styles.permissionButton}
         />
@@ -77,7 +77,7 @@ export default function ObsQrScannerScreen() {
           <>
             <StatusLabel live tone="danger">{error}</StatusLabel>
             <ControlButton
-              label="Scan Ulang"
+              label="Pindai ulang"
               onPress={() => {
                 setError('');
                 setLocked(false);
@@ -87,9 +87,9 @@ export default function ObsQrScannerScreen() {
           </>
         ) : (
           <>
-            <ThemedText type="smallBold">Arahkan kamera ke QR Connect Info OBS</ThemedText>
+            <ThemedText type="smallBold">Arahkan kamera ke QR dari OBS</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Host, port, dan password akan terisi otomatis. Uji koneksi setelah kembali ke Pengaturan.
+              Host, port, dan password akan terisi otomatis. Setelah itu, uji koneksi di Pengaturan.
             </ThemedText>
           </>
         )}

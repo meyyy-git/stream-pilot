@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-import { ControlButton } from '@/components/control-ui';
-import { ThemedText } from '@/components/themed-text';
+import { PanelStatus } from '@/components/console-section';
+import { PanelEmptyState } from '@/components/control-ui';
 import { getChatRoleColors, toYouTubeChatUrl } from '@/lib/domain';
 import { useApp } from '@/providers/app-provider';
 
@@ -238,11 +238,29 @@ function makeCleanChatScript(
 })();`;
 }
 
-export function LiveChat({ streamLink }: { streamLink: string }) {
+export function LiveChat({
+  streamLink,
+  onStatusChange,
+}: {
+  streamLink: string;
+  onStatusChange?: (status: PanelStatus) => void;
+}) {
   const { colors: theme, resolvedTheme, settings } = useApp();
   const uri = toYouTubeChatUrl(streamLink);
   const webviewRef = useRef<WebView>(null);
-  const [loading, setLoading] = useState(true);
+  const [webViewState, setWebViewState] = useState<{
+    uri: string | null;
+    loading: boolean;
+    status: PanelStatus;
+  }>({ uri, loading: Boolean(uri), status: 'connecting' });
+  const status: PanelStatus = !streamLink.trim()
+    ? 'unconfigured'
+    : !uri
+      ? 'error'
+      : webViewState.uri === uri
+        ? webViewState.status
+        : 'connecting';
+  const loading = Boolean(uri) && (webViewState.uri !== uri || webViewState.loading);
   const cleanChatScript = makeCleanChatScript(theme, resolvedTheme, settings.chatFontSize);
 
   useEffect(() => {
@@ -263,18 +281,21 @@ export function LiveChat({ streamLink }: { streamLink: string }) {
   }, [theme, resolvedTheme, settings.chatFontSize]);
 
   useEffect(() => {
-    setLoading(true);
-  }, [uri]);
+    onStatusChange?.(status);
+  }, [onStatusChange, status]);
 
   if (!uri) {
     return (
-      <View style={styles.empty}>
-        <ThemedText type="smallBold">Live chat belum siap</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
-          Tempel link video, live, atau popout YouTube di Pengaturan.
-        </ThemedText>
-        <ControlButton label="Buka Pengaturan" onPress={() => router.push('/settings')} />
-      </View>
+      <PanelEmptyState
+        icon={{ ios: streamLink.trim() ? 'link.badge.plus' : 'rectangle.stack.badge.play', android: streamLink.trim() ? 'link_off' : 'video_chat' }}
+        title={streamLink.trim() ? 'Link YouTube belum valid' : 'Hubungkan live chat'}
+        description={streamLink.trim()
+          ? 'Periksa link video atau siaran langsung yang tersimpan di Pengaturan.'
+          : 'Tambahkan link siaran YouTube untuk memantau chat di sini.'}
+        actionLabel={streamLink.trim() ? 'Periksa link YouTube' : 'Tambahkan link YouTube'}
+        onAction={() => router.push('/settings')}
+        tone={streamLink.trim() ? 'danger' : 'textSecondary'}
+      />
     );
   }
 
@@ -296,8 +317,15 @@ export function LiveChat({ streamLink }: { streamLink: string }) {
         cacheEnabled
         cacheMode="LOAD_DEFAULT"
         androidLayerType="hardware"
-        onLoadEnd={() => setLoading(false)}
-        onError={() => setLoading(false)}
+        onLoadStart={() => {
+          setWebViewState({ uri, loading: true, status: 'connecting' });
+        }}
+        onLoad={() => setWebViewState({ uri, loading: false, status: 'ready' })}
+        onLoadEnd={() => setWebViewState((current) => current.uri === uri ? { ...current, loading: false } : current)}
+        onError={() => {
+          setWebViewState({ uri, loading: false, status: 'error' });
+        }}
+        onHttpError={() => setWebViewState({ uri, loading: false, status: 'error' })}
         setSupportMultipleWindows={false}
         onShouldStartLoadWithRequest={(request) => {
           const target = request.url.toLowerCase();
@@ -319,10 +347,14 @@ export function LiveChat({ streamLink }: { streamLink: string }) {
           return false;
         }}
         renderError={() => (
-          <View style={styles.empty}>
-            <ThemedText type="smallBold">Live chat tidak dapat dimuat</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">Periksa koneksi dan tautan siaran.</ThemedText>
-          </View>
+          <PanelEmptyState
+            icon={{ ios: 'wifi.exclamationmark', android: 'wifi_off' }}
+            title="Live chat belum dapat dimuat"
+            description="Periksa koneksi internet atau link YouTube, lalu coba lagi."
+            actionLabel="Periksa Pengaturan"
+            onAction={() => router.push('/settings')}
+            tone="danger"
+          />
         )}
       />
       {loading ? (
@@ -346,6 +378,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  empty: { flex: 1, minHeight: 160, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
-  center: { textAlign: 'center', maxWidth: 320 },
 });

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ConsoleSection } from '@/components/console-section';
+import { ConsoleSection, PanelStatus } from '@/components/console-section';
 import { IconButton, StatusLabel } from '@/components/control-ui';
 import { FontSizeDropdown } from '@/components/font-size-dropdown';
 import { LiveChat } from '@/components/live-chat';
@@ -30,6 +30,9 @@ export default function LiveConsoleScreen() {
   const theme = useTheme();
   const { settings, setSettings } = useApp();
   const [activePanel, setActivePanel] = useState<PanelId>('chat');
+  const [chatStatus, setChatStatus] = useState<PanelStatus>('unconfigured');
+  const [obsStatus, setObsStatus] = useState<PanelStatus>('unconfigured');
+  const [trakteerStatus, setTrakteerStatus] = useState<PanelStatus>('unconfigured');
 
   useEffect(() => {
     if (settings.keepAwake) void KeepAwake.activateKeepAwakeAsync('live-console');
@@ -48,8 +51,8 @@ export default function LiveConsoleScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         <View style={[styles.appBar, { borderBottomColor: theme.border }]}>
           <View style={styles.brand}>
-            <ThemedText type="smallBold">STREAM PILOT</ThemedText>
-            <StatusLabel>Konsol lokal</StatusLabel>
+            <ThemedText type="smallBold">Stream Pilot</ThemedText>
+            <StatusLabel>Kontrol siaran lokal</StatusLabel>
           </View>
           <IconButton
             accessibilityLabel="Buka Pengaturan"
@@ -61,7 +64,8 @@ export default function LiveConsoleScreen() {
         <View style={[styles.console, tablet && styles.tabletConsole]}>
           <View {...panelProps('chat')} style={[styles.panel, tablet ? styles.chatPanel : activePanel !== 'chat' && styles.hiddenPanel]}>
             <ConsoleSection
-              title="LiveChat · YOUTUBE"
+              title="Live chat · YouTube"
+              status={chatStatus}
               action={
                 <FontSizeDropdown
                   value={settings.chatFontSize}
@@ -69,17 +73,17 @@ export default function LiveConsoleScreen() {
                   compact
                 />
               }>
-              <LiveChat streamLink={settings.streamLink} />
+              <LiveChat streamLink={settings.streamLink} onStatusChange={setChatStatus} />
             </ConsoleSection>
           </View>
           <View {...panelProps('obs')} style={[styles.panel, tablet ? styles.controlPanel : activePanel !== 'obs' && styles.hiddenPanel]}>
-            <ConsoleSection title="OBS">
-              <ObsControls config={settings.obs} />
+            <ConsoleSection title="OBS" status={obsStatus}>
+              <ObsControls config={settings.obs} onStatusChange={setObsStatus} />
             </ConsoleSection>
           </View>
           <View {...panelProps('trakteer')} style={[styles.panel, tablet ? styles.controlPanel : activePanel !== 'trakteer' && styles.hiddenPanel]}>
-            <ConsoleSection title="TRAKTEER">
-              <TrakteerControls config={settings.trakteer} />
+            <ConsoleSection title="Trakteer" status={trakteerStatus}>
+              <TrakteerControls config={settings.trakteer} onStatusChange={setTrakteerStatus} />
             </ConsoleSection>
           </View>
         </View>

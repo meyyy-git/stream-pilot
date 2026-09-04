@@ -11,7 +11,7 @@
       "icon": "./assets/expo.icon",
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocalNetworkUsageDescription": "Stream Pilot terhubung ke OBS pada jaringan lokal Anda.",
+        "NSLocalNetworkUsageDescription": "Stream Pilot menggunakan jaringan lokal untuk terhubung ke OBS.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }

@@ -1,33 +1,47 @@
-import { SymbolView } from 'expo-symbols';
 import { PropsWithChildren, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 
+export type PanelStatus = 'unconfigured' | 'connecting' | 'ready' | 'error';
+
 export function ConsoleSection({
   title,
   action,
+  status = 'unconfigured',
   children,
 }: PropsWithChildren & {
   title: string;
   action?: ReactNode;
+  status?: PanelStatus;
 }) {
   const theme = useTheme();
+  const statusColor = {
+    unconfigured: theme.textSecondary,
+    connecting: theme.warning,
+    ready: theme.success,
+    error: theme.danger,
+  }[status];
+  const statusLabel = {
+    unconfigured: 'Belum disetel',
+    connecting: 'Sedang diproses',
+    ready: 'Siap',
+    error: 'Bermasalah',
+  }[status];
 
   return (
     <View style={[styles.section, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <View style={[styles.tally, { backgroundColor: theme.text }]} />
+        <View
+          accessible
+          accessibilityLabel={`Status ${title}: ${statusLabel}`}
+          style={[styles.statusDot, { backgroundColor: statusColor }]}
+        />
         <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
           {title}
         </ThemedText>
         {action}
-        <SymbolView
-          name={{ ios: 'circle.fill', android: 'circle' }}
-          size={7}
-          tintColor={theme.textSecondary}
-        />
       </View>
       <View style={styles.content}>{children}</View>
     </View>
@@ -51,7 +65,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  tally: { width: 4, height: 18, borderRadius: 2 },
+  statusDot: { width: 9, height: 9, borderRadius: 5 },
   title: { flex: 1 },
   content: { flex: 1, minHeight: 0, minWidth: 0 },
 });

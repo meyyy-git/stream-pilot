@@ -36,7 +36,7 @@ The product combines three otherwise separate control surfaces in one adaptive L
 - OBS connects and reconnects automatically, mirrors real-time Program scene and source visibility, shows sources for the active scene, and includes nested groups.
 - Scene changes target Program directly; Preview and Transition controls are out of scope.
 - Trakteer provides fixed Alert + Mediashare and Gacha control banks backed by private Action URLs, plus notification and platform-specific media tests in Settings.
-- Trakteer URLs save automatically in secure device storage; incomplete actions remain visible but disabled.
+- Trakteer URLs save automatically in secure device storage; an unconfigured panel shows a setup prompt, while partially configured controls remain visible but disabled.
 - Compact windows use a Chat, OBS, and Trakteer bottom navigation bar while keeping inactive content mounted. Windows at least 600 dp on their shortest side show all three sections at 40/30/30.
 - The app follows device rotation, keeps the screen awake by default while the Live Console is active, and uses light haptics without sound.
 - Settings provide System, Light, and Dark themes. Interface language is Bahasa Indonesia.

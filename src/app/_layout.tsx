@@ -53,7 +53,7 @@ function AppShell() {
       <Stack screenOptions={{ contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: 'Pengaturan', headerBackTitle: 'Konsol' }} />
-        <Stack.Screen name="obs-qr-scanner" options={{ title: 'Scan QR OBS', presentation: 'modal' }} />
+        <Stack.Screen name="obs-qr-scanner" options={{ title: 'Pindai QR OBS', presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
   );

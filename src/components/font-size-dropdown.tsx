@@ -90,9 +90,9 @@ export function FontSizeDropdown({
             ]}>
             <View style={[styles.dialogHeader, { borderBottomColor: theme.border }]}>
               <View style={styles.dialogHeaderTitles}>
-                <ThemedText type="smallBold">Pilih Ukuran Teks Chat</ThemedText>
+                <ThemedText type="smallBold">Pilih ukuran teks live chat</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  Ukuran huruf pada WebView YouTube
+                  Perubahan langsung diterapkan pada chat YouTube.
                 </ThemedText>
               </View>
               <Pressable

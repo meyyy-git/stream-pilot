@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,19 +50,80 @@ jobs:
 
       - name: Prepare APK for release
         id: prep
+        env:
+          REQUESTED_TAG: ${{ github.event.inputs.tag_name || github.ref_name }}
         run: |
           mkdir -p release-artifacts
-          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+          TAG="$REQUESTED_TAG"
           if [ -z "$TAG" ] || [ "$TAG" = "master" ] || [ "$TAG" = "main" ]; then
             TAG="v1.0.0"
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/stream-pilot-${TAG}.apk"
 
+      - name: Generate release notes
+        env:
+          TAG: ${{ steps.prep.outputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          TARGET="$GITHUB_SHA"
+          if git rev-parse "$TAG^{commit}" >/dev/null 2>&1; then
+            TARGET="$TAG"
+          fi
+
+          PREVIOUS=""
+          if git rev-parse "$TARGET^" >/dev/null 2>&1; then
+            PREVIOUS="$(git describe --tags --abbrev=0 "$TARGET^" 2>/dev/null || true)"
+          fi
+          RANGE="$TARGET"
+          if [ -n "$PREVIOUS" ]; then
+            RANGE="$PREVIOUS..$TARGET"
+          fi
+
+          FEATURES="$(mktemp)"
+          FIXES="$(mktemp)"
+          OTHER="$(mktemp)"
+          FEATURE_PATTERN='^(feat|feature)(\([^)]*\))?!?:'
+          FIX_PATTERN='^(fix|bugfix)(\([^)]*\))?!?:'
+
+          while IFS=$'\t' read -r SHA SUBJECT; do
+            [ -n "$SHA" ] || continue
+            SHORT_SHA="${SHA:0:7}"
+            LINE="- ${SUBJECT} ([${SHORT_SHA}](https://github.com/${REPOSITORY}/commit/${SHA}))"
+            if [[ "$SUBJECT" =~ $FEATURE_PATTERN ]]; then
+              echo "$LINE" >> "$FEATURES"
+            elif [[ "$SUBJECT" =~ $FIX_PATTERN ]]; then
+              echo "$LINE" >> "$FIXES"
+            else
+              echo "$LINE" >> "$OTHER"
+            fi
+          done < <(git log "$RANGE" --no-merges --format='%H%x09%s')
+
+          NOTES="release-artifacts/RELEASE_NOTES.md"
+          for SECTION in "Features:$FEATURES" "Fixes:$FIXES" "Other Changes:$OTHER"; do
+            TITLE="${SECTION%%:*}"
+            FILE="${SECTION#*:}"
+            printf '## %s\n\n' "$TITLE" >> "$NOTES"
+            if [ -s "$FILE" ]; then
+              cat "$FILE" >> "$NOTES"
+            else
+              printf '_No changes._\n' >> "$NOTES"
+            fi
+            printf '\n' >> "$NOTES"
+          done
+
+          cat "$NOTES" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        id: release
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.prep.outputs.tag }}
           name: Stream Pilot ${{ steps.prep.outputs.tag }}
           files: release-artifacts/*.apk
-          generate_release_notes: true
+          body_path: release-artifacts/RELEASE_NOTES.md
+
+      - name: Add release link to summary
+        env:
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: echo "[Open GitHub Release]($RELEASE_URL)" >> "$GITHUB_STEP_SUMMARY"

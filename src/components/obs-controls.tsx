@@ -1,33 +1,94 @@
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 
-import { ControlButton, StatusLabel } from '@/components/control-ui';
+import { PanelStatus } from '@/components/console-section';
+import { ControlButton, PanelEmptyState, StatusLabel } from '@/components/control-ui';
 import { ThemedText } from '@/components/themed-text';
 import { useObs } from '@/hooks/use-obs';
 import { ObsConfig } from '@/lib/domain';
 
 const statusCopy = {
   unconfigured: ['Belum disetel', 'neutral'],
-  connecting: ['Menghubungkan', 'warning'],
+  connecting: ['Menghubungkan ke OBS…', 'warning'],
   connected: ['Terhubung', 'success'],
-  reconnecting: ['Menyambung ulang', 'warning'],
-  error: ['Terputus', 'danger'],
+  reconnecting: ['Menyambungkan ulang…', 'warning'],
+  error: ['Koneksi OBS terputus', 'danger'],
 } as const;
 
-export function ObsControls({ config }: { config: ObsConfig }) {
+export function ObsControls({
+  config,
+  onStatusChange,
+}: {
+  config: ObsConfig;
+  onStatusChange?: (status: PanelStatus) => void;
+}) {
   const obs = useObs(config);
   const [label, tone] = statusCopy[obs.status];
   const disabled = obs.status !== 'connected';
+  const panelStatus: PanelStatus = obs.status === 'connected'
+    ? 'ready'
+    : obs.status === 'error'
+      ? 'error'
+      : obs.status === 'unconfigured'
+        ? 'unconfigured'
+        : 'connecting';
+
+  useEffect(() => {
+    onStatusChange?.(panelStatus);
+  }, [onStatusChange, panelStatus]);
+
+  if (obs.status === 'unconfigured') {
+    return (
+      <PanelEmptyState
+        icon={{ ios: 'qrcode.viewfinder', android: 'qr_code_scanner' }}
+        title="Hubungkan OBS"
+        description="Pindai QR dari OBS atau isi detail koneksi secara manual."
+        actionLabel="Atur OBS"
+        onAction={() => router.push('/settings')}
+      />
+    );
+  }
+
+  if (!obs.scenes.length && (obs.status === 'connecting' || obs.status === 'reconnecting')) {
+    return (
+      <PanelEmptyState
+        icon={{ ios: 'rectangle.3.group', android: 'dashboard' }}
+        title={label}
+        description="Pastikan perangkat ini dan komputer OBS berada di jaringan yang sama."
+        actionLabel="Periksa Pengaturan"
+        onAction={() => router.push('/settings')}
+      />
+    );
+  }
+
+  if (!obs.scenes.length && obs.status === 'error') {
+    return (
+      <PanelEmptyState
+        icon={{ ios: 'exclamationmark.triangle', android: 'warning' }}
+        title="OBS belum dapat dihubungkan"
+        description="Periksa jaringan dan detail koneksi, lalu uji kembali dari Pengaturan."
+        actionLabel="Periksa Pengaturan"
+        onAction={() => router.push('/settings')}
+        tone="danger"
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.statusLine}>
-        <StatusLabel live tone={tone}>{label}</StatusLabel>
-        {obs.error ? <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.error}>{obs.error}</ThemedText> : null}
-      </View>
+      {obs.status === 'reconnecting' || obs.status === 'error' ? (
+        <View style={styles.statusLine}>
+          <StatusLabel live tone={tone}>{label}</StatusLabel>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.error}>
+            Periksa jaringan atau detail koneksi di Pengaturan.
+          </ThemedText>
+        </View>
+      ) : null}
 
       <ScrollView contentContainerStyle={styles.scrollContent} nestedScrollEnabled>
-        <ThemedText type="smallBold" themeColor="textSecondary">SCENE PROGRAM</ThemedText>
+        <ThemedText type="smallBold" themeColor="textSecondary">Scene program</ThemedText>
         <View style={styles.buttonGrid}>
           {obs.scenes.map((scene) => (
             <ControlButton
@@ -43,16 +104,16 @@ export function ObsControls({ config }: { config: ObsConfig }) {
               }}
             />
           ))}
-          {!obs.scenes.length ? <ThemedText type="small" themeColor="textSecondary">Belum ada scene.</ThemedText> : null}
+          {!obs.scenes.length ? <ThemedText type="small" themeColor="textSecondary">Belum ada scene di OBS.</ThemedText> : null}
         </View>
 
-        <ThemedText type="smallBold" themeColor="textSecondary">SOURCE · {obs.activeScene || '—'}</ThemedText>
+        <ThemedText type="smallBold" themeColor="textSecondary">Source · {obs.activeScene || 'Belum ada scene aktif'}</ThemedText>
         <View>
           {obs.items.map((item) => (
             <View key={item.key} style={[styles.sourceRow, { paddingLeft: 4 + item.depth * 18 }]}>
               <View style={styles.sourceCopy}>
                 <ThemedText type="smallBold" numberOfLines={1}>{item.name}</ThemedText>
-                {item.isGroup ? <ThemedText type="small" themeColor="textSecondary">Group</ThemedText> : null}
+                {item.isGroup ? <ThemedText type="small" themeColor="textSecondary">Grup</ThemedText> : null}
               </View>
               <Switch
                 accessibilityLabel={`${item.enabled ? 'Sembunyikan' : 'Tampilkan'} ${item.name}`}
@@ -66,7 +127,7 @@ export function ObsControls({ config }: { config: ObsConfig }) {
               />
             </View>
           ))}
-          {!obs.items.length ? <ThemedText type="small" themeColor="textSecondary">Source scene aktif akan muncul di sini.</ThemedText> : null}
+          {!obs.items.length ? <ThemedText type="small" themeColor="textSecondary">Source dari scene aktif akan muncul di sini.</ThemedText> : null}
         </View>
       </ScrollView>
     </View>
