@@ -19,18 +19,18 @@ type UrlField = { key: keyof TrakteerConfig; label: string };
 const TRAKTEER_STREAM_SETTINGS_URL = 'https://trakteer.id/v2/manage/stream-settings';
 
 const alertFields: UrlField[] = [
-  { key: 'previous', label: 'Sebelumnya' },
-  { key: 'play', label: 'Putar' },
-  { key: 'pause', label: 'Jeda' },
-  { key: 'next', label: 'Berikutnya' },
-  { key: 'censorText', label: 'Sensor teks' },
-  { key: 'censorMedia', label: 'Sensor media' },
+  { key: 'previous', label: 'Previous' },
+  { key: 'play', label: 'Play' },
+  { key: 'pause', label: 'Pause' },
+  { key: 'next', label: 'Next' },
+  { key: 'censorText', label: 'Censor Text' },
+  { key: 'censorMedia', label: 'Censor Media' },
 ];
 
 const gachaFields: UrlField[] = [
-  { key: 'gachaSpin', label: 'Putar' },
-  { key: 'gachaHide', label: 'Sembunyikan' },
-  { key: 'gachaShow', label: 'Tampilkan' },
+  { key: 'gachaSpin', label: 'Spin' },
+  { key: 'gachaHide', label: 'Hide' },
+  { key: 'gachaShow', label: 'Show' },
 ];
 
 const testFields: UrlField[] = [
@@ -120,11 +120,12 @@ function TrakteerUrlField({
 
   return (
     <Field
+      key={`${label}-${visible ? 'visible' : 'hidden'}`}
       label={label}
       value={value}
       autoCapitalize="none"
       autoCorrect={false}
-      keyboardType="url"
+      keyboardType={visible ? 'url' : 'default'}
       secureTextEntry={!visible}
       placeholder="https://ws.trakteer.id/…"
       error={value && !valid ? 'Link belum valid. Gunakan Action URL HTTPS dari Trakteer.' : undefined}
@@ -166,7 +167,7 @@ export default function SettingsScreen() {
     }));
   };
   const progress = (fields: UrlField[]) =>
-    `${fields.filter((field) => isTrakteerActionUrl(settings.trakteer[field.key])).length} dari ${fields.length} aksi siap`;
+    `${fields.filter((field) => isTrakteerActionUrl(settings.trakteer[field.key])).length} dari ${fields.length} tombol siap`;
 
   const testTrakteer = (label: string, url: string) => {
     Alert.alert('Jalankan pengujian?', `${label} akan benar-benar dikirim ke overlay Trakteer.`, [

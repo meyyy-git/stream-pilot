@@ -95,7 +95,7 @@ export function TrakteerControls({
           {feedback.label}
         </StatusLabel>
       ) : readyCount < controlUrls.length ? (
-        <StatusLabel tone="warning">{readyCount} dari {controlUrls.length} aksi siap</StatusLabel>
+        <StatusLabel tone="warning">{readyCount} dari {controlUrls.length} tombol siap</StatusLabel>
       ) : null}
 
       <View style={styles.group}>
