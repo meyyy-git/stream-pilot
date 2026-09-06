@@ -69,6 +69,8 @@ export type AppSettings = {
   chatFontSize: ChatFontSize;
   theme: ThemePreference;
   keepAwake: boolean;
+  obsSourceOrder: Record<string, string[]>;
+  obsAudioOrder: Record<string, string[]>;
 };
 
 export const defaultTrakteerConfig: TrakteerConfig = {
@@ -94,6 +96,8 @@ export const defaultSettings: AppSettings = {
   chatFontSize: 16,
   theme: 'system',
   keepAwake: true,
+  obsSourceOrder: {},
+  obsAudioOrder: {},
 };
 
 export function toYouTubeChatUrl(value: string) {

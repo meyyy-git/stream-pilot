@@ -12,27 +12,33 @@ export function IconButton({
   icon,
   onPress,
   disabled,
+  active,
+  tone = 'neutral',
 }: {
   accessibilityLabel: string;
   icon: IconName;
   onPress: () => void;
   disabled?: boolean;
+  active?: boolean;
+  tone?: 'neutral' | 'danger';
 }) {
   const theme = useTheme();
+  const tintColor = tone === 'danger' ? theme.danger : theme.text;
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
+      accessibilityState={{ disabled, selected: active }}
       disabled={disabled}
       onPress={onPress}
       hitSlop={4}
       style={({ pressed }) => [
         styles.iconButton,
-        { backgroundColor: theme.control, borderColor: theme.border },
+        { backgroundColor: active ? theme.backgroundSelected : theme.control, borderColor: active ? tintColor : theme.border },
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}>
-      <SymbolView name={icon} size={18} weight="semibold" tintColor={theme.text} />
+      <SymbolView name={icon} size={18} weight="semibold" tintColor={active ? tintColor : theme.text} />
     </Pressable>
   );
 }

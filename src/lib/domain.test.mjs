@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { getChatRoleColors, isNewerVersion, isTrakteerActionUrl, normalizeVersion, parseObsQrCode, toYouTubeChatUrl } from './domain.ts';
+import { moveItem, orderItems } from './list-order.ts';
+import { formatObsDb, obsDbToFader, obsFaderToDb } from './obs-audio.ts';
 
 test('normalizes supported YouTube links without an API', () => {
   const expected = 'https://www.youtube.com/live_chat?is_popout=1&v=abc12345678';
@@ -61,4 +63,19 @@ test('compares strict release versions', () => {
   assert.equal(isNewerVersion('v1.1.0', '1.0.9'), true);
   assert.equal(isNewerVersion('v1.0.0', '1.0.0'), false);
   assert.equal(isNewerVersion('v0.9.9', '1.0.0'), false);
+});
+
+test('matches the OBS logarithmic audio fader', () => {
+  assert.equal(obsFaderToDb(0), -100);
+  assert.equal(obsFaderToDb(1), 0);
+  assert.equal(obsDbToFader(-100), 0);
+  assert.equal(obsDbToFader(0), 1);
+  assert.equal(formatObsDb(-100), '−∞ dB');
+  for (const db of [-60, -30, -12]) assert.ok(Math.abs(obsFaderToDb(obsDbToFader(db)) - db) < 0.001);
+});
+
+test('applies and updates a saved local control order', () => {
+  const rows = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  assert.deepEqual(orderItems(rows, ['c', 'a'], (row) => row.id).map((row) => row.id), ['c', 'a', 'b']);
+  assert.deepEqual(moveItem(rows, 2, 0).map((row) => row.id), ['c', 'a', 'b']);
 });

@@ -21,6 +21,12 @@ export type ObsSceneItem = {
   depth: number;
 };
 
+export type ObsAudioInput = {
+  name: string;
+  volumeDb: number;
+  muted: boolean;
+};
+
 type RawSceneItem = {
   sceneItemId: number;
   sourceName: string;
@@ -50,8 +56,11 @@ export function useObs(config: ObsConfig) {
   const [scenes, setScenes] = useState<ObsScene[]>([]);
   const [activeScene, setActiveScene] = useState('');
   const [items, setItems] = useState<ObsSceneItem[]>([]);
+  const [audioInputs, setAudioInputs] = useState<ObsAudioInput[]>([]);
+  const loadVersionRef = useRef(0);
 
   const loadItems = useCallback(async (client: ObsWebSocketClient, sceneName: string) => {
+    const loadVersion = ++loadVersionRef.current;
     async function read(containerName: string, depth: number, isGroup: boolean): Promise<ObsSceneItem[]> {
       const response = isGroup
         ? await client.call('GetGroupSceneItemList', { sceneName: containerName })
@@ -75,7 +84,29 @@ export function useObs(config: ObsConfig) {
     }
 
     const next = await read(sceneName, 0, false);
-    if (mountedRef.current) setItems(next);
+    const specialInputs = await client.call('GetSpecialInputs') as unknown as Record<string, string | null>;
+    const names = [...new Set([
+      ...next.map((item) => item.name),
+      ...['desktop1', 'desktop2', 'mic1', 'mic2', 'mic3', 'mic4']
+        .map((slot) => specialInputs[slot])
+        .filter((name): name is string => Boolean(name)),
+    ])];
+    const nextAudioInputs = (await Promise.all(names.map(async (name) => {
+      try {
+        const [volume, mute] = await Promise.all([
+          client.call('GetInputVolume', { inputName: name }),
+          client.call('GetInputMute', { inputName: name }),
+        ]);
+        return { name, volumeDb: volume.inputVolumeDb, muted: mute.inputMuted };
+      } catch {
+        return null;
+      }
+    }))).filter((input): input is ObsAudioInput => input !== null);
+
+    if (mountedRef.current && loadVersion === loadVersionRef.current) {
+      setItems(next);
+      setAudioInputs(nextAudioInputs);
+    }
   }, []);
 
   const loadScenes = useCallback(async (client: ObsWebSocketClient) => {
@@ -142,11 +173,20 @@ export function useObs(config: ObsConfig) {
       client.on('SceneItemCreated', () => void loadScenes(client));
       client.on('SceneItemRemoved', () => void loadScenes(client));
       client.on('SceneItemListReindexed', () => void loadScenes(client));
+      client.on('InputMuteStateChanged', ({ inputName, inputMuted }) => {
+        setAudioInputs((current) => current.map((input) => input.name === inputName ? { ...input, muted: inputMuted } : input));
+      });
+      client.on('InputVolumeChanged', ({ inputName, inputVolumeDb }) => {
+        setAudioInputs((current) => current.map((input) => input.name === inputName ? { ...input, volumeDb: inputVolumeDb } : input));
+      });
+      client.on('InputCreated', () => void loadScenes(client));
+      client.on('InputRemoved', () => void loadScenes(client));
+      client.on('InputNameChanged', () => void loadScenes(client));
 
       try {
         await client.connect(connectionUrl(config), config.password || undefined, {
           rpcVersion: 1,
-          eventSubscriptions: EventSubscription.Scenes | EventSubscription.SceneItems,
+          eventSubscriptions: EventSubscription.Scenes | EventSubscription.SceneItems | EventSubscription.Inputs,
         });
         if (stopped) return void client.disconnect();
         attempts = 0;
@@ -191,5 +231,19 @@ export function useObs(config: ObsConfig) {
     setItems((current) => current.map((row) => row.key === item.key ? { ...row, enabled } : row));
   }, []);
 
-  return { status, error, scenes, activeScene, items, switchScene, setItemEnabled };
+  const setInputMuted = useCallback(async (input: ObsAudioInput, muted: boolean) => {
+    const client = clientRef.current;
+    if (!client) throw new Error('OBS belum terhubung.');
+    await client.call('SetInputMute', { inputName: input.name, inputMuted: muted });
+    setAudioInputs((current) => current.map((row) => row.name === input.name ? { ...row, muted } : row));
+  }, []);
+
+  const setInputVolume = useCallback(async (input: ObsAudioInput, volumeDb: number) => {
+    const client = clientRef.current;
+    if (!client) throw new Error('OBS belum terhubung.');
+    await client.call('SetInputVolume', { inputName: input.name, inputVolumeDb: volumeDb });
+    setAudioInputs((current) => current.map((row) => row.name === input.name ? { ...row, volumeDb } : row));
+  }, []);
+
+  return { status, error, scenes, activeScene, items, audioInputs, switchScene, setItemEnabled, setInputMuted, setInputVolume };
 }

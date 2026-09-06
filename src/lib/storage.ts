@@ -8,9 +8,16 @@ const OBS_PASSWORD_KEY = 'stream-pilot.obs-password';
 const TRAKTEER_KEY = 'stream-pilot.trakteer';
 const actionKey = (id: string) => `stream-pilot.action.${id}`;
 
-type StoredSettings = Pick<AppSettings, 'streamLink' | 'chatFontSize' | 'theme' | 'keepAwake'> & {
+type StoredSettings = Pick<AppSettings, 'streamLink' | 'chatFontSize' | 'theme' | 'keepAwake' | 'obsSourceOrder' | 'obsAudioOrder'> & {
   obs: Omit<AppSettings['obs'], 'password'>;
 };
+
+function parseOrder(value: unknown) {
+  if (!value || typeof value !== 'object') return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string[]] =>
+    Array.isArray(entry[1]) && entry[1].every((item) => typeof item === 'string'),
+  ));
+}
 
 type LegacySettings = StoredSettings & { groups?: { actions?: { id: string }[] }[] };
 
@@ -49,6 +56,8 @@ export async function loadSettings(): Promise<AppSettings> {
         : defaultSettings.chatFontSize,
       theme: stored.theme ?? defaultSettings.theme,
       keepAwake: stored.keepAwake ?? defaultSettings.keepAwake,
+      obsSourceOrder: parseOrder(stored.obsSourceOrder),
+      obsAudioOrder: parseOrder(stored.obsAudioOrder),
     };
   } catch {
     return defaultSettings;
@@ -62,6 +71,8 @@ export async function saveSettings(settings: AppSettings) {
     chatFontSize: settings.chatFontSize,
     theme: settings.theme,
     keepAwake: settings.keepAwake,
+    obsSourceOrder: settings.obsSourceOrder,
+    obsAudioOrder: settings.obsAudioOrder,
   };
 
   await Promise.all([
