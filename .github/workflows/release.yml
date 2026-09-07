@@ -87,6 +87,7 @@ jobs:
           mkdir -p release-artifacts
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/stream-pilot-${TAG}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "release-artifacts/stream-pilot-latest.apk"
 
       - name: Generate release notes
         env:
