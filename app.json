@@ -14,8 +14,10 @@
         "NSLocalNetworkUsageDescription": "Stream Pilot menggunakan jaringan lokal untuk terhubung ke OBS.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
-        }
-      }
+        },
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.stream.pilot"
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +25,10 @@
         "foregroundImage": "./assets/images/logo-rounded.png",
         "monochromeImage": "./assets/images/logo-rounded.png"
       },
-      "predictiveBackGestureEnabled": true
+      "predictiveBackGestureEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -61,6 +66,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b3a8cc4d-d54b-4432-89c1-b159056fc0c8"
+      }
     }
   }
 }
